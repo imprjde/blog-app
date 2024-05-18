@@ -30,7 +30,7 @@ export default function Navbar() {
           href="/"
           className="text-3xl font-extrabold tracking-wide cursor-pointer"
         >
-          V BLOG
+          V BLOGGG
         </Link>
         <div className="md:flex space-x-6 hidden items-center">
           <span>
