@@ -1,28 +1,49 @@
-///NOTE: This ia a Dummy Code, Replace this with the original code code from he original project directory
-
-import { NextResponse } from "next/server";
 import { connectMongoDB } from "@/utils/mongodbConnect";
-import Post from "@/models/post";
+import NextAuth from "next-auth/next";
+import GoogleProvider from "next-auth/providers/google";
+import User from "@/models/user";
 
-export const GET = async (req, { params }) => {
-  const url = new URL(req.url, process.env.CORS);
-  const searchParams = new URLSearchParams(url.search);
-  const slug = searchParams.get("slug");
-  const query = slug.charAt(0).toUpperCase() + slug.slice(1);
+const authOptions = {
+  providers: [
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    }),
+  ],
+  callbacks: {
+    async signIn({ user, account }) {
+      if (account.provider === "google") {
+        const { name, email } = user;
+        try {
+          await connectMongoDB();
+          const userExists = await User.findOne({ email });
 
-  try {
-    await connectMongoDB();
-    let posts = await Post.find({ category: query });
+          if (!userExists) {
+            const res = await fetch("http://localhost:3000/api/user", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                name,
+                email,
+              }),
+            });
 
-    console.log(posts);
-    console.log(slug);
+            if (res.ok) {
+              return user;
+            }
+          }
+        } catch (error) {
+          console.log(error);
+        }
+      }
 
-    return NextResponse.json({ data: posts });
-  } catch (error) {
-    console.error("Error fetching posts:", error);
-    return NextResponse.json(
-      { error: "An error occurred while fetching posts." },
-      { status: 500 }
-    );
-  }
+      return user;
+    },
+  },
 };
+
+const handler = NextAuth(authOptions);
+
+export { handler as GET, handler as POST };
